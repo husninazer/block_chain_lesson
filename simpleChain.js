@@ -43,7 +43,7 @@ class Blockchain{
       //console.log(this.chainLength)
       
        //Check if genesis block exists
-      if(this.chainLength == -1) {
+      if(this.chainLength == 0) {
         this.addBlock(new Block("First block in the chain - Genesis block"));
       }
     }, err => {
@@ -187,13 +187,14 @@ app.get('/block/:height', async (req, res) => {
 
 
 app.post('/block', async (req, res) => {
-  let payload = req.body.payload || '';
-  if(payload == "") return res.send("Empty Data")
+  let body = req.body.body || '';
+  if(body == "") return res.send("Empty Data")
 
-  let newBlock =  await blockChain.addBlock(new Block(payload))
-  console.log("HEIGHT:" ,newBlock.height)
-  let height = newBlock.height
-  await res.json(await blockChain.getBlock(height))
+  let newBlock =  await blockChain.addBlock(new Block(body))
+  res.json( newBlock)
+  // let height = newBlock.height
+  // let newBlockStored = await blockChain.getBlock(height)
+  // await  res.json( newBlockStored)
 
 })
 

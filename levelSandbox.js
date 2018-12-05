@@ -30,7 +30,7 @@ exports.addLevelDBData = function (key,value){
 exports.getChainLength = function () {
   return new Promise(function(resolve, reject) {
     var chain = []
-    var count = -1
+    var count = 0
     db.createReadStream()
     .on('data', function(data){
       //console.log(data.value)
