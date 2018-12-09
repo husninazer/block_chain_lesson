@@ -41,6 +41,7 @@ exports.getChainLength = function () {
       reject(err)
     })
     .on('close', function() {
+      count-- // Subtract GENESIS block
       resolve(count)
     })
   })

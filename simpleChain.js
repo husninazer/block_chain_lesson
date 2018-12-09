@@ -8,7 +8,7 @@ const Promise = require('promise');
 
 const express = require('express')
 const app = express()
-var bodyParser = require('body-parser')
+const bodyParser = require('body-parser')
 
 
 app.use( bodyParser.json() );   
@@ -41,9 +41,8 @@ class Blockchain{
     .then(length => {
       this.chainLength = length
       //console.log(this.chainLength)
-      
        //Check if genesis block exists
-      if(this.chainLength == 0) {
+      if(this.chainLength < 0) {
         this.addBlock(new Block("First block in the chain - Genesis block"));
       }
     }, err => {
@@ -55,7 +54,7 @@ class Blockchain{
   async addBlock(newBlock){
 
     // Block height
-    newBlock.height = await this.getBlockHeight()
+    newBlock.height = (await this.getBlockHeight() + 1 )
     
     // UTC timestamp
     newBlock.time = new Date().getTime().toString().slice(0,-3);
@@ -72,7 +71,7 @@ class Blockchain{
         //this.chain.push(newBlock);
         
         //Add Block to storage
-        levelServices.addLevelDBData(newBlock.height, JSON.stringify(newBlock).toString());
+        levelServices.addLevelDBData(newBlock.height, JSON.stringify(newBlock));
 
         //Increment Chain Length
         this.chainLength = this.chainLength + 1
@@ -84,7 +83,7 @@ class Blockchain{
 
   // Get block height
     async getBlockHeight(){
-      return await levelServices.getChainLength()
+      return (await levelServices.getChainLength())
     }
 
     // get block
@@ -104,9 +103,9 @@ class Blockchain{
     // validate block
     async validateBlock(blockHeight){
       // get block object
-       this.getBlock(blockHeight).then(value => {
+       return this.getBlock(blockHeight).then(value => {
 
-         let block = value
+         let block = JSON.parse(value)
               // get block hash
           let blockHash = block.hash;
 
@@ -128,14 +127,15 @@ class Blockchain{
    // Validate blockchain
    async validateChain(){
       let errorLog = [];
-      let chainHeight = await this.getBlockHeight()
-      for (var i = 0; i < chainHeight -1 ; i++) {
+      let chainHeight = (await this.getBlockHeight())
+      console.log("CHAIN LENGTH ", chainHeight)
+      for (let i = 0; i < chainHeight  ; i++) {
         // validate block
         if (await this.validateBlock(i) == false) errorLog.push(i);
         // compare blocks hash link
 
-        let blockHash = await this.getBlock(i).hash
-        let previousHash = await this.getBlock(i+1).previousBlockHash
+        let blockHash = (await this.getBlock(i)).hash
+        let previousHash = (await this.getBlock(i+1)).previousBlockHash
         
 
         if (blockHash!==previousHash) {
@@ -154,23 +154,13 @@ class Blockchain{
 
 
 ( function theLoop (i) {
-  // let blockchain = new Blockchain()
+  let blockchain = new Blockchain()
   
-  // setTimeout(function() {
-  //   blockchain.validateChain().then(data => {
-  //      blockchain.getBlockHeight().then((height) => {
-  //        console.log("getBlockHeight", height)
-  //      })
-  //   })
-  // }, 2000) 
- 
-  // setTimeout(function(){
+  setTimeout(async function() {
+    blockchain.validateChain().then(data => {
 
-  //     //console.log("add req")
-  //       blockchain.addBlock(new Block("test data "+i))
-      
-  // }, 2000)
-
+    })
+  }, 2000) 
 })(0);
 
 
