@@ -10,6 +10,12 @@ const express = require('express')
 const app = express()
 const bodyParser = require('body-parser')
 
+const bitcoin = require('bitcoinjs-lib');
+const bitcoinMessage = require('bitcoinjs-message');
+const hex2ascii = require('hex2ascii')
+
+let Mempool = require('./memPool')
+let mempool = new Mempool()
 
 app.use( bodyParser.json() );   
 const port = 8000
@@ -59,8 +65,8 @@ class Blockchain{
     // UTC timestamp
     newBlock.time = new Date().getTime().toString().slice(0,-3);
     // previous block hash
-    if(this.chainLength>0) { 
-       let incomingBlock = await this.getBlock(this.chainLength-1) 
+    if(this.chainLength>=0) { 
+       let incomingBlock = await this.getBlock(this.chainLength) 
        newBlock.previousBlockHash = JSON.parse(incomingBlock).hash
        //console.log("INCOMING BLOKC", JSON.parse(incomingBlock).hash)
       }
@@ -153,6 +159,9 @@ class Blockchain{
 }
 
 
+
+
+
 ( function theLoop (i) {
   let blockchain = new Blockchain()
   
@@ -160,7 +169,13 @@ class Blockchain{
     blockchain.validateChain().then(data => {
 
     })
-  }, 2000) 
+  }, 2000)
+  
+  let address = '142BDCeSGbXjWKaAnYXbMpZ6sbrSAo3DpZ'
+  let signature = 'IJtpSFiOJrw/xYeucFxsHvIRFJ85YSGP8S1AEZxM4/obS3xr9iz7H0ffD7aM2vugrRaCi/zxaPtkflNzt5ykbc0='
+  let message = '142BDCeSGbXjWKaAnYXbMpZ6sbrSAo3DpZ:1532330740:starRegistry'
+
+  
 })(0);
 
 
@@ -177,16 +192,83 @@ app.get('/block/:height', async (req, res) => {
 
 
 app.post('/block', async (req, res) => {
-  let body = req.body.body || '';
-  if(body == "") return res.send("Empty Data")
+  let body = req.body || '';
+  if(body == "")  return res.send("Empty Data")
+
+  //check if address valid
+  let mempoolObject = mempool.mempoolValid[body.address] || ''
+  if(mempoolObject === '')
+  return res.send("Address & Signatire not validated")
+
+  //Check if star data, then encode story
+  if (!!("star" in body)) 
+  body.star.story = Buffer(body.star.story).toString('hex')
 
   let newBlock =  await blockChain.addBlock(new Block(body))
+  newBlock.body.star.storyDecoded = hex2ascii(newBlock.body.star.story)
   res.json( newBlock)
-  // let height = newBlock.height
-  // let newBlockStored = await blockChain.getBlock(height)
-  // await  res.json( newBlockStored)
 
 })
+
+
+
+
+//Route- requestValidation
+app.post('/requestValidation', (req, res) => {
+  let address = req.body.address
+  if(!address) return res.send("Invalid Address")
+  mempool.addRequestValidation(address).then(resolve => {
+    res.json(resolve)
+  }, reject =>{
+    res.send(reject)
+  })
+})
+
+
+//Route - validate
+app.post('/message-signature/validate', (req, res) => {
+  let address = req.body.address
+  let signature = req.body.signature
+  if(!address || ! signature) return res.send("Requires Address / Signature")
+  mempool.validate(address, signature).then(resolve => {
+    res.json(resolve)
+  }, reject =>{
+    res.send(reject)
+  })
+})
+
+
+//Route - get star by hash
+app.get('/stars/:property', (req, res) => {
+  let string = String(req.params.property)
+
+  let property= string.split(":")[0]
+  let value = string.split(":")[1]
+  
+
+  if(property === "address") {
+    levelServices.getBlockByAddress(value).then(resolve => {
+      for(let i =0; i < resolve.length; i++) {
+        if(!!resolve[i].body.star)
+        resolve[i].body.star["storyDecoded"] = hex2ascii(resolve[i].body.star.story)
+      }
+      res.json(resolve)
+    }) 
+  }
+
+  else if(property === "hash") {
+    levelServices.getBlockByHash(value).then(resolve => {
+      resolve.body.star.storyDecoded = hex2ascii(resolve.body.star.story)
+      res.json(resolve)
+    })
+  }
+
+})
+
+
+
+
+
 
 
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))

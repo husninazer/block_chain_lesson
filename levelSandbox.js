@@ -58,6 +58,49 @@ exports.getLevelDBData = function(key) {
   })
 }
 
+//Get Block by Hash
+exports.getBlockByHash = function(hash) {
+  let block = null;
+  return new Promise(function(resolve, reject){
+      db.createReadStream()
+      .on('data', function (data) {
+        let temp = JSON.parse(data.value)
+          if(temp.hash === hash){
+              block = temp;
+          }
+      })
+      .on('error', function (err) {
+          reject(err)
+      })
+      .on('close', function () {
+          resolve(block);
+      });
+  });
+}
+
+//Get Block by Address
+exports.getBlockByAddress = function(address) {
+  let blocks = [];
+  return new Promise(function(resolve, reject){
+      db.createReadStream()
+      .on('data', function (data) {
+          let temp = JSON.parse(data.value)
+          if(!!temp.body)
+          if(temp.body.address === address){
+              blocks.push(temp);
+          }
+      })
+      .on('error', function (err) {
+          reject(err)
+      })
+      .on('close', function () {
+          resolve(blocks);
+      });
+  });
+}
+
+
+
 
 // Add data to levelDB with value
 function addDataToLevelDB(value) {
