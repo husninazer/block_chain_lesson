@@ -52,9 +52,11 @@ class Mempool {
         this.timeoutRequests[walletAddress] = this.mempool[walletAddress]
         delete this.mempool[walletAddress];
     }
-  
    
-
+    //Remove from mempoolvalid after registering a star
+    removeMempoolValid(walletAddress) {
+        delete this.mempoolValid[walletAddress];
+    }
 
     //Implements Validate
     validate(walletAddress, signature){
@@ -64,15 +66,15 @@ class Mempool {
 
         return new Promise(async function(resolve, reject) {
             //check in this.mempool
-            if (!object)  reject("No Validation requests found")
+            if (!object)  reject({err: "No Validation requests found"})
 
             // verify window time
             let timeLeft = self.getTimeDifference(object.requestTimeStamp)
-            if(timeLeft < 0) reject("Time Out") 
+            if(timeLeft < 0) reject({err:"Time Out"}) 
             object["validationWindow"] = timeLeft
 
             let isValid = await bitcoinMessage.verify(object.message, walletAddress, signature);
-            if(!isValid)  reject("Invalid Signature")
+            if(!isValid)  reject({err:"Invalid Signature"})
             object["messageSignature"] = true
 
             let newObject = {

@@ -171,11 +171,6 @@ class Blockchain{
     })
   }, 2000)
   
-  let address = '142BDCeSGbXjWKaAnYXbMpZ6sbrSAo3DpZ'
-  let signature = 'IJtpSFiOJrw/xYeucFxsHvIRFJ85YSGP8S1AEZxM4/obS3xr9iz7H0ffD7aM2vugrRaCi/zxaPtkflNzt5ykbc0='
-  let message = '142BDCeSGbXjWKaAnYXbMpZ6sbrSAo3DpZ:1532330740:starRegistry'
-
-  
 })(0);
 
 
@@ -185,7 +180,7 @@ app.get('/block/:height', async (req, res) => {
   await blockChain.getBlock(blockHeight).then(resolve => {
       res.json(JSON.parse(resolve))
   }, reject => {
-    res.send("Key does not exist")
+    res.json({err: "Key does not exist"})
   })
   
 })
@@ -193,19 +188,29 @@ app.get('/block/:height', async (req, res) => {
 
 app.post('/block', async (req, res) => {
   let body = req.body || '';
-  if(body == "")  return res.send("Empty Data")
+  if(body == "")  return res.json({err:"Empty Data"})
 
   //check if address valid
   let mempoolObject = mempool.mempoolValid[body.address] || ''
   if(mempoolObject === '')
-  return res.send("Address & Signatire not validated")
+  return res.json({err:"Address & Signature not validated"})
+
+
+  // Check if user already registered a star
+  let starsRegistered = await levelServices.getBlockByAddress(body.address)
+  if(starsRegistered.length > 0) return res.json({err: "A Star already registered by this address"})
 
   //Check if star data, then encode story
-  if (!!("star" in body)) 
+  if (!!("star" in body))
   body.star.story = Buffer(body.star.story).toString('hex')
+
 
   let newBlock =  await blockChain.addBlock(new Block(body))
   newBlock.body.star.storyDecoded = hex2ascii(newBlock.body.star.story)
+
+  //remove from mempoolValid array
+  mempool.removeMempoolValid(body.address)
+
   res.json( newBlock)
 
 })
@@ -220,7 +225,7 @@ app.post('/requestValidation', (req, res) => {
   mempool.addRequestValidation(address).then(resolve => {
     res.json(resolve)
   }, reject =>{
-    res.send(reject)
+    res.json(reject)
   })
 })
 
@@ -233,12 +238,12 @@ app.post('/message-signature/validate', (req, res) => {
   mempool.validate(address, signature).then(resolve => {
     res.json(resolve)
   }, reject =>{
-    res.send(reject)
+    res.json(reject)
   })
 })
 
 
-//Route - get star by hash
+//Route - get star by hash / address
 app.get('/stars/:property', (req, res) => {
   let string = String(req.params.property)
 
